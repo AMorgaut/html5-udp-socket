@@ -4,7 +4,7 @@ UDP Socket API as proposed by the ex W3C Sysapps WG
 
 ## Example
 
-```
+```javascript
 //
 // This example shows a simple implementation of UPnP-SSDP M-SEARCH
 // discovery using a multicast UDPSocket
