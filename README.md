@@ -14,7 +14,7 @@ Reference: [TCP UDP Socket API](https://www.w3.org/TR/tcp-udp-sockets/)
 To things to be aware of:
 
 1. This implementation is still just a draft in progress. It needs at least to complete the `readable` and `writable` Stream properties implementations.
-2. It is expected to be used as a high level layer worker on dedicated vendors
+2. It is expected to be used as a high level layer working on dedicated vendors
  
 The objective it to write vendor adapters such as:
 
