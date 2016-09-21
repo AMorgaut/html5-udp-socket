@@ -1,8 +1,34 @@
 # html5-udp-socket
 
+[DRAFT]
+
 UDP Socket API as proposed by the ex W3C Sysapps WG
 
-## Example
+> Note: At the time this specification, the [STREAM API](https://streams.spec.whatwg.org) was not yet finalized
+> This implementation will probably require some adaptations in its algorythms
+
+Reference: [TCP UDP Socket API](https://www.w3.org/TR/tcp-udp-sockets/)
+
+## How to use
+
+To things to be aware of:
+
+1. This implementation is still just a draft in progress. It needs at least to complete the `readable` and `writable` Stream properties implementations.
+2. It is expected to be used as a high level layer worker on dedicated vendors
+ 
+The objective it to write vendor adapters such as:
+
+* Cordova plugin (Android/iOs/...)
+* React Native /  NativeScript 
+* Chrome App
+* Firefox OS
+* WinJS
+* node.js / Wakanda
+* CommonJS
+
+Anyone is very Welcome to contribute to this project ;-)
+
+## Usage Example
 
 ```javascript
 //
@@ -84,11 +110,9 @@ navigator.udpPermission.requestPermission({remoteAddress:"239.255.255.250",
     );
 
   },
-  e => console.error("Sending SSDP multicast messages was denied due
-                      to error: ", e);
+  e => console.error("Sending SSDP multicast messages was denied due to error: ", e);
 );
 
 ```
 
-https://www.w3.org/TR/tcp-udp-sockets/
 
