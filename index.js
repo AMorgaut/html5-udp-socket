@@ -20,6 +20,13 @@ function SecurityError(message) {
     return error;
 }
 
+function NetworkError(message) {
+    var error = new Error(message);
+    error.name = 'NetworkError';
+    error.code = DOMException && DOMException.NETWORK_ERR || 19;
+    return error;
+}
+
 function AbortError(message) {
     var error = new Error(message);
     error.name = 'AbortError';
@@ -732,6 +739,7 @@ function UDPSocket(options) {
      */
     
     step12 = step11.then(function () {
+
         // Let the mySocket.readable attribute be a new ReadableStream object, [STREAMS]. 
         // The user agent must implement the adaptation layer to [STREAMS] for this new ReadableStream object 
         // through implementation of a number of functions that are given as input arguments to the constructor 
@@ -745,8 +753,8 @@ function UDPSocket(options) {
             start: function(controller) {
                 // The start() function must run the following steps:
                 
-                // 1. Setup the UDP socket to the bound local and remote address/port pairs in the background (without blocking scripts)
-                //    and return openedPromise.
+                // 1. Setup the UDP socket to the bound local and remote address/port pairs in the background 
+                //    (without blocking scripts) and return openedPromise.
                 var setupPromise = new Promise(function (resolve, reject) {
                     readableStreamSourceRejecter = reject;
                     return vendorDatagramSocket.setup(
@@ -755,56 +763,113 @@ function UDPSocket(options) {
                         mySocket.remoteAddress,
                         mySocket.remotePort
                     );
-                })
+                });
                 
-                setupPromise.then( function () {
-                    // 2. When the UDP socket has been successfully setup the following steps must run:
+                // 2. When the UDP socket has been successfully setup the following steps must run:
+                setupPromise.then(function onUdpSocketSetup() {
                     //    1. Change the mySocket.readyState attribute's value to "open".
                     readyState = SocketReadyState.OPEN;
                     //    2. Resolve openedPromise with undefined.
                     openedResolver();
+
+                    // The following internal methods of the ReadableStream are arguments of the constructor's 
+                    // start() function and must be called by the start() function implementation according to 
+                    // the following steps:
+
+                    // * The enqueue() argument of start() is a function that pushes received data into the 
+                    // internal buffer.
+                    //   When a new UDP datagram has been received the following steps must run:
+                    vendorDatagramSocket.listenDatagrams(function onDatagram(datagram, source) {
+                        //   1. Create a new instance of UDPMessage.
+                        var udpMessage = new UDPMessage(
+                            //   2. Set the UDPMessage object's data member to a new read-only ArrayBuffer object
+                            //      whose contents are the received UDP datagram [TYPED-ARRAYS].
+                            toArrayBuffer(data),
+                            //   3. Set the remoteAddress member of the UDPMessage object to the source address 
+                            //      of  the received UDP datagram.
+                            source.address,
+                            //   4. Set the remotePort member of the UDPMessage object to the source port of 
+                            //      the received UDP datagram.
+                            source.port
+                        );
+                        
+                        //   5. Call enqueue() to push the UDPMessage object into the internal [STREAMS] 
+                        //      receive buffer. 
+
+                        //      Note that enqueue() returns false if the high watermark of the buffer is reached. 
+                        //      However, as there is no flow control mechanism in UDP the flow of datagrams can't 
+                        //      be stopped. 
+                        //      The enqueue() return value should therefore be ignored. 
+                        //      This means that datagrams will be lost if the internal receive buffer has been 
+                        //      filled to it's memory limit but this is the nature of an unreliable protocol as UDP.
+                        
+                        /*var returnValue =*/ controller.enqueue(udpMessage);
+                    });
+                });
+
+                // * The error() argument of start() is a function that handles readable stream errors 
+                //   and closes the readble stream.
+
+                //   Upon detection that the attempt to setup a new UDP socket 
+                //   (mySocket.readyState is "opening") has failed, 
+                //   e.g. because the local address/port pair is already in use and 
+                //   mySocket.addressReuse is false, the following steps must run:
+                setupPromise.catch(function onSetupError(error) {
+                    //   1. Call error() with DOMException "NetworkError".
+                    var networkError = NetworkError('UDPSocket setup error');
+                    controller.error(networkError);
+                    //   2. Reject openedPromise with DOMException "NetworkError".
+                    openedRejecter(networkError);
+                    //   3. Reject closedPromise with DOMException "NetworkError".
+                    closedRejecter(networkError);
+                    //   4. Change the mySocket.readyState attribute's value to "closed" 
+                    readyState = SocketReadyState.CLOSED;
+                    //      and release any underlying resources associated with this socket.
+                    releaseResources();
                 });
                 
+                //   Upon detection that there is an error with the established UDP socket
+                //   (mySocket.readyState is "open"),  e.g. network connection is lost, the following steps must run:
+                vendorDatagramSocket.listenError(function onVendorError(error) {
+                    //   1. Call error() with DOMException "NetworkError".
+                    var networkError = NetworkError(error.message);
+                    controller.error(networkError);
+                    //   2. Reject closedPromise with DOMException "NetworkError".
+                    closedRejecter(networkError);
+                    //   3. Change the mySocket.readyState attribute's value to "closed"
+                    readyState = SocketReadyState.CLOSED;
+                    //      and release any underlying resources associated with this socket.
+                    releaseResources();
+                });
+
+                //   When a new UDP datagram has been received 
+                function toArrayBuffer(data) {
+                    var buffer;
+                    try {
+                        //   and upon detection that it is not possible to convert the received UDP data 
+                        //   to ArrayBuffer, [TYPED-ARRAYS], 
+                        buffer = new ArrayBuffer(data);
+                    } catch(e) {
+                        //   the following steps must run:
+                        //   1. Call error() with TypeError.
+                        var typeError = TypeError(error.message);
+                        controller.error(typeError);
+                        //   2. Reject closedPromise with TypeError.
+                        closedRejecter(typeError);
+                        //   3. Change the mySocket.readyState attribute's value to "closed" 
+                        readyState = SocketReadyState.CLOSED;
+                        //      and release any underlying resources associated with this socket.
+                        releaseResources();
+                    }
+                }
+
+                function releaseResources() {
+                    // TODO 
+                    // Check any resources that could be released
+                }
+
                 return mySocket.opened;
             },
-
-            // TODO
-            // The following internal methods of the ReadableStream are arguments of the constructor's start() function 
-            // and must be called by the start() function implementation according to the following steps:
-            // * The enqueue() argument of start() is a function that pushes received data into the internal buffer.
-            //   When a new UDP datagram has been received the following steps must run:
-            //   1. Create a new instance of UDPMessage.
-            //   2. Set the UDPMessage object's data member to a new read-only ArrayBuffer object whose contents are 
-            //      the received UDP datagram [TYPED-ARRAYS].
-            //   3. Set the remoteAddress member of the UDPMessage object to the source address of the received UDP datagram.
-            //   4. Set the remotePort member of the UDPMessage object to the source port of the received UDP datagram.
-            //   5. Call enqueue() to push the UDPMessage object into the internal [STREAMS] receive buffer. 
-            //      Note that enqueue() returns false if the high watermark of the buffer is reached. 
-            //      However, as there is no flow control mechanism in UDP the flow of datagrams can't be stopped. 
-            //      The enqueue() return value should therefore be ignored. 
-            //      This means that datagrams will be lost if the internal receive buffer has been filled to it's memory limit 
-            //      but this is the nature of an unreliable protocol as UDP.
-            // * The error() argument of start() is a function that handles readable stream errors and closes the readble stream.
-            //   Upon detection that the attempt to setup a new UDP socket (mySocket.readyState is "opening") has failed, 
-            //   e.g. because the local address/port pair is already in use and mySocket.addressReuse is false, 
-            //   the following steps must run:
-            //   1. Call error() with DOMException "NetworkError".
-            //   2. Reject openedPromise with DOMException "NetworkError".
-            //   3. Reject closedPromise with DOMException "NetworkError".
-            //   4. Change the mySocket.readyState attribute's value to "closed" and release any underlying resources associated 
-            //      with this socket.
-            //   Upon detection that there is an error with the established UDP socket (mySocket.readyState is "open"), 
-            //   e.g. network connection is lost, the following steps must run:
-            //   1. Call error() with DOMException "NetworkError".
-            //   2. Reject closedPromise with DOMException "NetworkError".
-            //   3. Change the mySocket.readyState attribute's value to "closed" and release any underlying resources associated 
-            //      with this socket.
-            //   When a new UDP datagram has been received and upon detction that it is not possible to convert the received UDP data 
-            //   to ArrayBuffer, [TYPED-ARRAYS], the following steps must run:
-            //   1. Call error() with TypeError.
-            //   2. Reject closedPromise with TypeError.
-            //   3. Change the mySocket.readyState attribute's value to "closed" and release any underlying resources associated 
-            //      with this socket.
 
             // The constructor's pull() function must be omitted as there is no flow control mechanism in UDP and the flow of datagrams 
             // cannot be stopped and started again.
@@ -843,20 +908,24 @@ function UDPSocket(options) {
                     closedResolver();
                     //    and release any underlying resources associated with this socket.
                 }
-
-                /*
-                ISSUE 1
-                If the constructor's strategy argument is omitted the default backpressure behavior of readable streams applies. 
-                Currently this means that the ReadableStream object begins applying backpressure after 1 chunk has been enqueued 
-                to the internal ReadableStream object's input buffer. 
-                To be further investigated which readable stream strategy that should be applied to UDP.
-                */
             }
         };
+
         defineReadOnlyProperty(
             'readable',
-            new ReadableStream(readableStreamSource)
+            new ReadableStream(
+                readableStreamSource
+                /*
+                ISSUE 1
+                If the constructor's strategy argument is omitted the default backpressure behavior of readable 
+                streams applies. 
+                Currently this means that the ReadableStream object begins applying backpressure after 1 chunk 
+                has been enqueued to the internal ReadableStream object's input buffer. 
+                To be further investigated which readable stream strategy that should be applied to UDP.
+                */
+            )
         );
+
     });
 
     // step 13
@@ -871,25 +940,88 @@ function UDPSocket(options) {
      */
 
     step13 = step12.then(function () {
+        // TODO:
+        // Let the mySocket.writeable attribute be a new WritableStream object, [STREAMS]. 
+        // The user agent must implement the adaptation layer to [STREAMS] for this new WritableStream 
+        // object through implementation of a number of functions that are given as input arguments to 
+        // the constructor and called by the [STREAMS] implementation. 
+        var writableStreamSourceRejecter;
+        var writableStreamSource = {
+            // The semantics for these functions are described below:
+
+            // The constructor's start() function must run the following steps:
+            start: function (controller) {
+                // Create a new promise, "writableStartPromise".
+                var writableStartPromise = new Promise(function (resolve, reject) {
+                    writableStreamSourceResolver = resolve;
+                    writableStreamSourceRejecter = reject;
+                });
+
+                // TODO
+                // If the attempt to create a new UDP socket 
+                // (see the description of the semantics for the mySocket.readable attribute constructor's 
+                // start() function ) succeded resolve writableStartPromise with undefined, 
+                // else reject writableStartPromise with DOMException "NetworkError".
+            },
+
+            // The constructor's write(chunk) function is called by the [STREAMS] implementation 
+            // to write UDP data. The write() function must run the following steps:
+            write:  function(chunk) {
+                // Create a new promise, "writePromise"
+                var writePromise = new Promise();
+                // Convert the chunk argument to a UDPMessage object (per [WEBIDL] dictionary conversion).
+                var udpMessage = new UDPMessage(chunk);
+                // If no default remote address was specified in the UDPSocket's constructor options argument's 
+                // remoteAddress member and the UDPMessage object's remoteAddress member is not present or null
+                if (!options.remoteAddress && !udpMessage.remoteAddress) {
+                    // then throw DOMException InvalidAccessError and abort these steps.
+                    throw InvalidAccessError('No Remote Address');
+                } 
+                // If no default remote port was specified in the UDPSocket's constructor options argument's 
+                // remotePort member and the UDPMessage object's remotePort member is not present or null 
+                if (!options.remotePort && !udpMessage.remotePort) {
+                    // then throw DOMException InvalidAccessError and abort these steps.
+                    throw InvalidAccessError('No Remote Port');
+                }
+                // If the UDPMesssage object's remoteAddress and/or remotePort member(s) are present 
+                if (udpMessage.remoteAddress && udpMessage.remotePort) {
+                    // but the webapp does not have permission to send UDP packets to this address and port 
+                    if (false) { //  TODO:  check Webapp Permission
+                        // then throw DOMException SecurityError and abort these steps.
+                        throw SecurityAccessError('No Remote Port');
+                    }
+                }
+                // Send UDP data with data passed in the data member of the UDPMessage object. 
+                // The destination address is the address defined by the UDPMesssage object's remoteAddress 
+                // member if present, 
+                // else the destination address is defined by the UDPSocket's constructor options argument's 
+                // remoteAddress member. 
+                // The destination port is the port defined by the UDPMesssage object's remotePort member 
+                // if present, 
+                // else the destination port is defined by the UDPSocket's constructor options argument's 
+                // remotePort member.
+            }
+        };
         /*
-        TODO:
-         Let the mySocket.writeable attribute be a new WritableStream object, [STREAMS]. The user agent must implement the adaptation layer to [STREAMS] for this new WritableStream object through implementation of a number of functions that are given as input arguments to the constructor and called by the [STREAMS] implementation. The semantics for these functions are described below:
-         The constructor's start() function must run the following steps:
-         Create a new promise, "writableStartPromise".
-         If the attempt to create a new UDP socket (see the description of the semantics for the mySocket.readable attribute constructor's start() function ) succeded resolve writableStartPromise with undefined, else reject writableStartPromise with DOMException "NetworkError".
-         The constructor's write(chunk) function is called by the [STREAMS] implementation to write UDP data. The write() function must run the following steps:
-         Create a new promise, "writePromise"
-         Convert the chunk argument to a UDPMessage object (per [WEBIDL] dictionary conversion).
-         If no default remote address was specified in the UDPSocket's constructor options argument's remoteAddress member and the UDPMessage object's remoteAddress member is not present or null then throw DOMException InvalidAccessError and abort these steps.
-         If no default remote port was specified in the UDPSocket's constructor options argument's remotePort member and the UDPMessage object's remotePort member is not present or null then throw DOMException InvalidAccessError and abort these steps.
-         If the UDPMesssage object's remoteAddress and/or remotePort member(s) are present but the webapp does not have permission to send UDP packets to this address and port then throw DOMException SecurityError and abort these steps.
-         Send UDP data with data passed in the data member of the UDPMessage object. The destination address is the address defined by the UDPMesssage object's remoteAddress member if present, else the destination address is defined by the UDPSocket's constructor options argument's remoteAddress member. The destination port is the port defined by the UDPMesssage object's remotePort member if present, else the destination port is defined by the UDPSocket's constructor options argument's remotePort member.
-         If sending succeed resolve writePromise with undefined, else reject writePromise with DOMException "NetworkError".
-         The constructor's close() and abort() functions must be omitted as it is not possible to just close the writable side of a UDP socket.
-         ISSUE 2
-         If the constructor's strategy argument is omitted the Default strategy for Writable Streams applies. Currently this means that the WriteableStream object goes to "waiting" state after 1 chunk has been written to the internal WriteableStream object's output buffer. This means that the webapp should use .ready to be notified of when the state changes to "writable", i.e. the queued chunk has been written to the remote peer and more data chunks could be written. To be further investigated which WritableStreamStrategy that should be applied to UDP.
+         TODO
+         If sending succeed resolve writePromise with undefined, 
+         else reject writePromise with DOMException "NetworkError".
+         The constructor's close() and abort() functions must be omitted as it is not possible 
+         to just close the writable side of a UDP socket.
          */
-        defineReadOnlyProperty('writable', new WritableStream());
+
+        defineReadOnlyProperty('writable', new WritableStream(
+            writableStreamSource
+            /*
+            ISSUE 2
+            If the constructor's strategy argument is omitted the Default strategy for Writable Streams applies. 
+            Currently this means that the WriteableStream object goes to "waiting" state after 1 chunk has been 
+            written to the internal WriteableStream object's output buffer. 
+            This means that the webapp should use .ready to be notified of when the state changes to "writable", 
+            i.e. the queued chunk has been written to the remote peer and more data chunks could be written. 
+            To be further investigated which WritableStreamStrategy that should be applied to UDP.
+             */
+        ));
     });
 
     // step 14
@@ -897,6 +1029,7 @@ function UDPSocket(options) {
         // TODO: Return the newly created UDPSocket object ("mySocket") to the webapp.
         return mySocket;
     });
+    
 }
 
 
