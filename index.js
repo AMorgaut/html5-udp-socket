@@ -737,7 +737,7 @@ function UDPSocket(options) {
      * @readonly
      * @type {ReadableStream}
      */
-    
+    var setupPromise;
     step12 = step11.then(function () {
 
         // Let the mySocket.readable attribute be a new ReadableStream object, [STREAMS]. 
@@ -755,7 +755,7 @@ function UDPSocket(options) {
                 
                 // 1. Setup the UDP socket to the bound local and remote address/port pairs in the background 
                 //    (without blocking scripts) and return openedPromise.
-                var setupPromise = new Promise(function (resolve, reject) {
+                setupPromise = new Promise(function (resolve, reject) {
                     readableStreamSourceRejecter = reject;
                     return vendorDatagramSocket.setup(
                         mySocket.localAddress,
@@ -917,10 +917,13 @@ function UDPSocket(options) {
                 readableStreamSource
                 /*
                 ISSUE 1
+
                 If the constructor's strategy argument is omitted the default backpressure behavior of readable 
                 streams applies. 
+
                 Currently this means that the ReadableStream object begins applying backpressure after 1 chunk 
                 has been enqueued to the internal ReadableStream object's input buffer. 
+                
                 To be further investigated which readable stream strategy that should be applied to UDP.
                 */
             )
@@ -940,12 +943,11 @@ function UDPSocket(options) {
      */
 
     step13 = step12.then(function () {
-        // TODO:
         // Let the mySocket.writeable attribute be a new WritableStream object, [STREAMS]. 
+
         // The user agent must implement the adaptation layer to [STREAMS] for this new WritableStream 
         // object through implementation of a number of functions that are given as input arguments to 
         // the constructor and called by the [STREAMS] implementation. 
-        var writableStreamSourceRejecter;
         var writableStreamSource = {
             // The semantics for these functions are described below:
 
@@ -953,72 +955,105 @@ function UDPSocket(options) {
             start: function (controller) {
                 // Create a new promise, "writableStartPromise".
                 var writableStartPromise = new Promise(function (resolve, reject) {
-                    writableStreamSourceResolver = resolve;
-                    writableStreamSourceRejecter = reject;
+                    // If the attempt to create a new UDP socket 
+                    // (see the description of the semantics for the mySocket.readable attribute constructor's 
+                    // start() function ) succeded 
+                    setupPromise.then(function () {
+                        // resolve writableStartPromise with undefined, 
+                        resolve(undefined);
+                    });
+                    // else
+                    setupPromise.catch(function (error) {
+                        // reject writableStartPromise with DOMException "NetworkError".
+                        reject(NetworkError('Setup UDP Socket failed: ' + error.message));
+                    });
                 });
-
-                // TODO
-                // If the attempt to create a new UDP socket 
-                // (see the description of the semantics for the mySocket.readable attribute constructor's 
-                // start() function ) succeded resolve writableStartPromise with undefined, 
-                // else reject writableStartPromise with DOMException "NetworkError".
+                return writableStartPromise;
             },
 
             // The constructor's write(chunk) function is called by the [STREAMS] implementation 
-            // to write UDP data. The write() function must run the following steps:
+            // to write UDP data. 
+            // The write() function must run the following steps:
             write:  function(chunk) {
                 // Create a new promise, "writePromise"
-                var writePromise = new Promise();
-                // Convert the chunk argument to a UDPMessage object (per [WEBIDL] dictionary conversion).
-                var udpMessage = new UDPMessage(chunk);
-                // If no default remote address was specified in the UDPSocket's constructor options argument's 
-                // remoteAddress member and the UDPMessage object's remoteAddress member is not present or null
-                if (!options.remoteAddress && !udpMessage.remoteAddress) {
-                    // then throw DOMException InvalidAccessError and abort these steps.
-                    throw InvalidAccessError('No Remote Address');
-                } 
-                // If no default remote port was specified in the UDPSocket's constructor options argument's 
-                // remotePort member and the UDPMessage object's remotePort member is not present or null 
-                if (!options.remotePort && !udpMessage.remotePort) {
-                    // then throw DOMException InvalidAccessError and abort these steps.
-                    throw InvalidAccessError('No Remote Port');
-                }
-                // If the UDPMesssage object's remoteAddress and/or remotePort member(s) are present 
-                if (udpMessage.remoteAddress && udpMessage.remotePort) {
-                    // but the webapp does not have permission to send UDP packets to this address and port 
-                    if (false) { //  TODO:  check Webapp Permission
-                        // then throw DOMException SecurityError and abort these steps.
-                        throw SecurityAccessError('No Remote Port');
+                var writePromise = new Promise(function (resolve, reject) {
+                    // Convert the chunk argument to a UDPMessage object (per [WEBIDL] dictionary conversion).
+                    var udpMessage = new UDPMessage(chunk);
+                    // If no default remote address was specified in the UDPSocket's constructor options argument's 
+                    // remoteAddress member and the UDPMessage object's remoteAddress member is not present or null
+                    if (!options.remoteAddress && !udpMessage.remoteAddress) {
+                        // then throw DOMException InvalidAccessError and abort these steps.
+                        throw InvalidAccessError('No Remote Address');
+                    } 
+                    // If no default remote port was specified in the UDPSocket's constructor options argument's 
+                    // remotePort member and the UDPMessage object's remotePort member is not present or null 
+                    if (!options.remotePort && !udpMessage.remotePort) {
+                        // then throw DOMException InvalidAccessError and abort these steps.
+                        throw InvalidAccessError('No Remote Port');
                     }
-                }
-                // Send UDP data with data passed in the data member of the UDPMessage object. 
-                // The destination address is the address defined by the UDPMesssage object's remoteAddress 
-                // member if present, 
-                // else the destination address is defined by the UDPSocket's constructor options argument's 
-                // remoteAddress member. 
-                // The destination port is the port defined by the UDPMesssage object's remotePort member 
-                // if present, 
-                // else the destination port is defined by the UDPSocket's constructor options argument's 
-                // remotePort member.
+                    // If the UDPMesssage object's remoteAddress and/or remotePort member(s) are present 
+                    if (udpMessage.remoteAddress && udpMessage.remotePort) {
+                        // but the webapp does not have permission to send UDP packets to this address and port 
+                        vendor.hasPermissionToSend(options).then(function (permissionOk) {
+                            if (!permissionOk) { //  TODO:  check Webapp Permission
+                                // then throw DOMException SecurityError and abort these steps.
+                                throw SecurityAccessError('No Remote Port');
+                            }
+                        });
+                    }
+
+                    // TODO: Clarify below UDP message remote Address & Port 
+
+                    // Send UDP data with data passed in the data member of the UDPMessage object. 
+
+                    // The destination address is the address defined by the UDPMesssage object's remoteAddress 
+                    // member if present, 
+                    // else the destination address is defined by the UDPSocket's constructor options argument's 
+                    // remoteAddress member. 
+                    if (!udpMessage.remoteAddress) {
+                        udpMessage.remoteAddress = options.remoteAddress;
+                    }
+
+                    // The destination port is the port defined by the UDPMesssage object's remotePort member 
+                    // if present, 
+                    // else the destination port is defined by the UDPSocket's constructor options argument's 
+                    // remotePort member.
+                    if (!udpMessage.remotePort) {
+                        udpMessage.remotePort = options.remotePort;
+                    }
+
+                    var sendUdpDataPromise = vendorDatagramSocket.sendUdpData(udpMessage);
+                    // If sending succeed 
+                    sendUdpDataPromise.then(function () {
+                        // resolve writePromise with undefined, 
+                        resolve(undefined);
+                    });
+                    // else 
+                    sendUdpDataPromise.catch(function (error) {
+                        // reject writePromise with DOMException "NetworkError". 
+                        resolve(NetworkError('Send UDP Data failed: ' + error.message));
+                    });
+                });
+
+                return writePromise;
             }
+            // The constructor's close() and abort() functions must be omitted as it is not possible 
+            // to just close the writable side of a UDP socket.
         };
-        /*
-         TODO
-         If sending succeed resolve writePromise with undefined, 
-         else reject writePromise with DOMException "NetworkError".
-         The constructor's close() and abort() functions must be omitted as it is not possible 
-         to just close the writable side of a UDP socket.
-         */
 
         defineReadOnlyProperty('writable', new WritableStream(
             writableStreamSource
             /*
             ISSUE 2
+
             If the constructor's strategy argument is omitted the Default strategy for Writable Streams applies. 
+
             Currently this means that the WriteableStream object goes to "waiting" state after 1 chunk has been 
             written to the internal WriteableStream object's output buffer. 
+
             This means that the webapp should use .ready to be notified of when the state changes to "writable", 
             i.e. the queued chunk has been written to the remote peer and more data chunks could be written. 
+
             To be further investigated which WritableStreamStrategy that should be applied to UDP.
              */
         ));
@@ -1029,7 +1064,7 @@ function UDPSocket(options) {
         // TODO: Return the newly created UDPSocket object ("mySocket") to the webapp.
         return mySocket;
     });
-    
+
 }
 
 
