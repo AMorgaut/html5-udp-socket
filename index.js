@@ -1,11 +1,14 @@
-/*global require, exports, DOMException, Promise, ReadableStream, WritableStream */
 
-'use strict';
+'use strict'; 
+
 var vendor = require('vendor');
 
 
 // HELPERS
 
+/**
+ * @private
+ */
 function InvalidAccessError(message) {
     var error = new Error(message);
     error.name = 'InvalidAccessError';
@@ -13,6 +16,9 @@ function InvalidAccessError(message) {
     return error;
 }
 
+/**
+ * @private
+ */
 function SecurityError(message) {
     var error = new Error(message);
     error.name = 'SecurityError';
@@ -20,6 +26,9 @@ function SecurityError(message) {
     return error;
 }
 
+/**
+ * @private
+ */
 function NetworkError(message) {
     var error = new Error(message);
     error.name = 'NetworkError';
@@ -27,6 +36,9 @@ function NetworkError(message) {
     return error;
 }
 
+/**
+ * @private
+ */
 function AbortError(message) {
     var error = new Error(message);
     error.name = 'AbortError';
@@ -34,16 +46,162 @@ function AbortError(message) {
     return error;
 }
 
+/**
+ * @private
+ */
 function isValidAddress(address) {
     // TODO: check address validity (host or IPV4 or IPV6)
     return Boolean(address);
 }
 
+/**
+ * @private
+ */
 function isValidPortNumber(port) {
     // very basic control
     // TODO: check system ephemeral port range to exclude
     return port < 65535;
 }
+
+
+// ENUMS
+
+/**
+ * TCPUDPPermissionState
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#tcpudppermissionstate
+ **/
+var TCPUDPPermissionState = {
+    // The webapp has permission to use the requested interface.
+    GRANTED: 'granted',
+    // The webapp has been denied permission to use the requested interface.
+    DENIED: 'denied',
+    // The webapp needs to request permission to use the requested interface by calling requestPermission.
+    PROMPT: 'prompt'
+};
+
+/**
+ * SocketReadyState
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#socketreadystate
+ **/
+var SocketReadyState = {
+    // The socket is in opening state,
+    // i.e. availability of local address/port is being checked, network status is being checked, etc.
+    OPENING: "opening",
+    // The socket is ready to use to send and received data.
+    OPEN: "open",
+    // The socket is closed and can not be use to send and received data
+    CLOSED: "closed"
+};
+
+
+// DICTIONARIES
+
+/**
+ * The UDPMessage dictionary represents UDP data including address and port of the remote peer. 
+ * The field data is mandatory but remoteAddress and remotePort are optional.
+ * 
+ * @class UDPMessage
+ * @param {ArrayBuffer} data Received UDP data or UDP data to send. 
+ * @param {string} remoteAddress The address of the remote machine. 
+ * @param {number} remotePort The port of the remote machine. 
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#idl-def-UDPMessage
+ */
+function UDPMessage (data, remoteAddress, remotePort) {
+    this.data = data;
+    this.remoteAddress = remoteAddress;
+    this.remotePort = remotePort;
+}
+
+
+/**
+ * States the options for the UDPSocket. 
+ * An instance of this dictionary can optionally be used in the constructor of the UDPSocket object, 
+ * where all fields are optional.
+ * 
+ * @class UDPOptions
+ * @param {string} localAddress The address of the local machine. 
+ * @param {number} localPort The port of the local machine. 
+ * @param {string} remoteAddress The address of the remote machine. 
+ * @param {number} remotePort The port of the remote machine. 
+ * @param {string} addressReuse Bound socket to a local address/port pair that already is in use
+ * @param {boolean} loopback Loop sent multicast data back to the sender
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#idl-def-UDPMessage
+ */
+function UDPOptions (localAddress, localPort, remoteAddress, remotePort, addressReuse, loopback) { // jshint ignore:line
+    // The IPv4/6 address of the local interface, e.g. wifi or 3G, that the UDPSocket object is bound to. 
+    // If the field is omitted, the user agent binds the socket to an IPv4/6 address based on the routing table 
+    // and possibly a preselect default local interface to use for the selected remoteAddress if this member is present. 
+    // Else the UDPSocket is unbound to a local interface.
+    this.localAddress  = localAddress ;
+    // The local port that the UDPSocket object is bound to. 
+    // If the the field is omitted, the user agent binds the socket to a an ephemeral local port decided by the system.
+    this.localPort  = localPort ;
+    // 
+    this.remoteAddress = remoteAddress;
+    //
+    this.remotePort = remotePort;
+    // true allows the socket to be bound to a local address/port pair that already is in use. Default is true.
+    this.addressReuse = addressReuse;
+    // Only applicable for multicast. true means that sent multicast data is looped back to the sender. Default is false.
+    this.loopback = loopback;
+}
+
+/**
+ * States the options for the webapp to get status of permission for creating a UDPSocket object or to request
+ * permission to create a UDPSocket object.
+ *
+ * An instance of this dictionary can optionally be used as argument to the UDPPermission hasPermission and
+ * requestPermission methods.
+ *
+ * All fields are optional.
+ *
+ * @class UDPPermissionOptions
+ * @param {string} localAddress The address of the local machine. 
+ * @param {number} localPort The port of the local machine. 
+ * @param {string} remoteAddress The address of the remote machine. 
+ * @param {number} remotePort The port of the remote machine. 
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#dictionary-udppermissionoptions
+ */
+function UDPPermissionOptions(localAddress, localPort, remoteAddress, remotePort) { // jshint ignore:line
+
+    /**
+     * The local interface that the webapp requests permission for the UDPSocket object to be bound to.
+     * If the field is omitted the webapp does not request permission to use any specific local interface,
+     * i.e. the user agent selects local interface.
+     *
+     * @type {string}
+     */
+    this.localAddress = localAddress;
+    
+    /**
+     * The local port that the webapp requests permission for the UDPSocket object to be bound to.
+     * If the field is omitted the webapp does not request permission to use any specific local port,
+     * i.e. the user agent selects local port.
+     *
+     * @type {number}
+     */
+    this.localPort = localPort;
+    
+    /**
+     * The host name or IPv4/6 address the webapp requests permission for the UDPSocket object
+     * to send UDP packets to.
+     * If the field is omitted it means that the webapp requests permission for the UDPSocket object
+     * to send UDP packets to any peer.
+     *
+     * @type {string}
+     */
+    this.remoteAddress = remoteAddress;
+    
+    /**
+     * The port of the peer the webapp requests permission for the UDPSocket object to send UDP packets to.
+     * If the field is omitted it means that the webapp requests permission for the UDPSocket object
+     * to send UDP packets to any port.
+     *
+     * @type {number}
+     */
+    this.remotePort = remotePort;
+}
+
 
 
 // INTERFACES
@@ -100,7 +258,7 @@ function UDPPermission() {
      * The method returns a Promise, which is resolved with the permission state as argument.
      *
      * @method hasPermission
-     * @param {UDPPermissionOptions} [udpPermissionOptions] Options for the permission state request. If this argument is omitted this is interpreted as described for UDPPermissionOptions when all dictionary fields are ommitted.
+     * @param {UDPPermissionOptions} [udpPermissionOptions] Options for the permission state request. If omitted, interpreted as when all dictionary fields are ommitted.
      * @returns {Promise<UDPPermissionOptions>}
      * @see https://www.w3.org/TR/tcp-udp-sockets/#widl-UDPPermission-hasPermission-Promise-TCPUDPPermissionState--UDPPermissionOptions-udpPermissionOptions
      */
@@ -135,7 +293,7 @@ function UDPPermission() {
      * which is resolved if permission was given and rejected if permission was denied.
      *
      * @method requestPermission
-     * @param {UDPPermissionOptions} [udpPermissionOptions] Options for the permission request. If this argument is omitted this is interpreted as described for UDPPermissionOptions when all dictionary fields are ommitted.
+     * @param {UDPPermissionOptions} [udpPermissionOptions] Options for the permission request. If omitted, interpreted as when all dictionary fields are ommitted.
      * @returns {Promise<void>}
      * @see https://www.w3.org/TR/tcp-udp-sockets/#widl-UDPPermission-requestPermission-Promise-void--UDPPermissionOptions-udpPermissionOptions
      */
@@ -247,64 +405,6 @@ function UDPPermission() {
         });
         return udpRequestPermissionPromise;
     };
-}
-
-/**
- * States the options for the webapp to get status of permission for creating a UDPSocket object or to request
- * permission to create a UDPSocket object.
- *
- * An instance of this dictionary can optionally be used as argument to the UDPPermission hasPermission and
- * requestPermission methods.
- *
- * All fields are optional.
- *
- * @class UDPPermissionOptions
- * @see 
- */
-function UDPPermissionOptions(local, remote) {
-    if (local) {
-        local = local.split(':');
-        /**
-         * The local interface that the webapp requests permission for the UDPSocket object to be bound to.
-         * If the field is omitted the webapp does not request permission to use any specific local interface,
-         * i.e. the user agent selects local interface.
-         *
-         * @type {string}
-         */
-        this.localAddress = local[0];
-        if (local[1]) {
-            /**
-             * The local port that the webapp requests permission for the UDPSocket object to be bound to.
-             * If the field is omitted the webapp does not request permission to use any specific local port,
-             * i.e. the user agent selects local port.
-             *
-             * @type {number}
-             */
-            this.localPort = local[1];
-        }
-    }
-    if (remote) {
-        remote = remote.split(':');
-        /**
-         * The host name or IPv4/6 address the webapp requests permission for the UDPSocket object
-         * to send UDP packets to.
-         * If the field is omitted it means that the webapp requests permission for the UDPSocket object
-         * to send UDP packets to any peer.
-         *
-         * @type {string}
-         */
-        this.remoteAddress = remote[0];
-        if (local[1]) {
-            /**
-             * The port of the peer the webapp requests permission for the UDPSocket object to send UDP packets to.
-             * If the field is omitted it means that the webapp requests permission for the UDPSocket object
-             * to send UDP packets to any port.
-             *
-             * @type {number}
-             */
-            this.remotePort = remote[1];
-        }
-    }
 }
 
 
@@ -784,7 +884,7 @@ function UDPSocket(options) {
                         var udpMessage = new UDPMessage(
                             //   2. Set the UDPMessage object's data member to a new read-only ArrayBuffer object
                             //      whose contents are the received UDP datagram [TYPED-ARRAYS].
-                            toArrayBuffer(data),
+                            toArrayBuffer(datagram),
                             //   3. Set the remoteAddress member of the UDPMessage object to the source address 
                             //      of  the received UDP datagram.
                             source.address,
@@ -816,7 +916,7 @@ function UDPSocket(options) {
                 //   mySocket.addressReuse is false, the following steps must run:
                 setupPromise.catch(function onSetupError(error) {
                     //   1. Call error() with DOMException "NetworkError".
-                    var networkError = NetworkError('UDPSocket setup error');
+                    var networkError = NetworkError('UDPSocket setup error: ' + error.message);
                     controller.error(networkError);
                     //   2. Reject openedPromise with DOMException "NetworkError".
                     openedRejecter(networkError);
@@ -849,7 +949,7 @@ function UDPSocket(options) {
                         //   and upon detection that it is not possible to convert the received UDP data 
                         //   to ArrayBuffer, [TYPED-ARRAYS], 
                         buffer = new ArrayBuffer(data);
-                    } catch(e) {
+                    } catch(error) {
                         //   the following steps must run:
                         //   1. Call error() with TypeError.
                         var typeError = TypeError(error.message);
@@ -923,7 +1023,7 @@ function UDPSocket(options) {
 
                 Currently this means that the ReadableStream object begins applying backpressure after 1 chunk 
                 has been enqueued to the internal ReadableStream object's input buffer. 
-                
+
                 To be further investigated which readable stream strategy that should be applied to UDP.
                 */
             )
@@ -997,7 +1097,7 @@ function UDPSocket(options) {
                         vendor.hasPermissionToSend(options).then(function (permissionOk) {
                             if (!permissionOk) { //  TODO:  check Webapp Permission
                                 // then throw DOMException SecurityError and abort these steps.
-                                throw SecurityAccessError('No Remote Port');
+                                throw SecurityError('No Remote Port');
                             }
                         });
                     }
@@ -1076,6 +1176,7 @@ UDPSocket.prototype.close = function () {
     // step 1
     // Call mysocket.readable.cancel(reason). (Reason codes TBD.)
     this.readable.cancel('reason').then(function () {
+        // TODO: Get access to vendorDatagramSocket 
         vendorDatagramSocket.close();
     });
     // step 2
@@ -1092,6 +1193,7 @@ UDPSocket.prototype.close = function () {
  * @param {string} multicastGroupAddress The multicast group address.
  */
 UDPSocket.prototype.joinMulticast = function (multicastGroupAddress) {
+    // TODO: Get access to vendorDatagramSocket 
     vendorDatagramSocket.joinMulticast(
         multicastGroupAddress
     );
@@ -1104,93 +1206,10 @@ UDPSocket.prototype.joinMulticast = function (multicastGroupAddress) {
  * @param {string} multicastGroupAddress The multicast group address.
  */
 UDPSocket.prototype.leaveMulticast = function (multicastGroupAddress) {
+    // TODO: Get access to vendorDatagramSocket 
     vendorDatagramSocket.leaveMulticast(
         multicastGroupAddress
     );
-};
-
-
-
-// DICTIONARIES
-
-/**
- * The UDPMessage dictionary represents UDP data including address and port of the remote peer. 
- * The field data is mandatory but remoteAddress and remotePort are optional.
- * 
- * @class UDPMessage
- * @param {ArrayBuffer} data Received UDP data or UDP data to send. 
- * @param {string} remoteAddress The address of the remote machine. 
- * @param {number} remotePort The port of the remote machine. 
- * @see https://www.w3.org/TR/tcp-udp-sockets/#idl-def-UDPMessage
- */
-function UDPMessage (data, remoteAddress, remotePort) {
-    this.data = data;
-    this.remoteAddress = remoteAddress;
-    this.remotePort = remotePort;
-}
-
-
-/**
- * States the options for the UDPSocket. 
- * An instance of this dictionary can optionally be used in the constructor of the UDPSocket object, 
- * where all fields are optional.
- * 
- * @class UDPOptions
- * @param {string} localAddress The address of the local machine. 
- * @param {number} localPort The port of the local machine. 
- * @param {string} remoteAddress The address of the remote machine. 
- * @param {number} remotePort The port of the remote machine. 
- * @param {string} addressReuse Bound socket to a local address/port pair that already is in use
- * @param {boolean} loopback Loop sent multicast data back to the sender
- * @see https://www.w3.org/TR/tcp-udp-sockets/#idl-def-UDPMessage
- */
-function UDPOptions (localAddress, localPort, remoteAddress, remotePort, addressReuse, loopback) {
-    // The IPv4/6 address of the local interface, e.g. wifi or 3G, that the UDPSocket object is bound to. 
-    // If the field is omitted, the user agent binds the socket to an IPv4/6 address based on the routing table 
-    // and possibly a preselect default local interface to use for the selected remoteAddress if this member is present. 
-    // Else the UDPSocket is unbound to a local interface.
-    this.localAddress  = localAddress ;
-    // The local port that the UDPSocket object is bound to. 
-    // If the the field is omitted, the user agent binds the socket to a an ephemeral local port decided by the system.
-    this.localPort  = localPort ;
-    // 
-    this.remoteAddress = remoteAddress;
-    //
-    this.remotePort = remotePort;
-    // true allows the socket to be bound to a local address/port pair that already is in use. Default is true.
-    this.addressReuse = addressReuse;
-    // Only applicable for multicast. true means that sent multicast data is looped back to the sender. Default is false.
-    this.loopback = loopback;
-}
-
-
-// ENUMS
-
-/**
- * TCPUDPPermissionState
- * @see https://www.w3.org/TR/tcp-udp-sockets/#tcpudppermissionstate
- **/
-var TCPUDPPermissionState = {
-    // The webapp has permission to use the requested interface.
-    GRANTED: 'granted',
-    // The webapp has been denied permission to use the requested interface.
-    DENIED: 'denied',
-    // The webapp needs to request permission to use the requested interface by calling requestPermission.
-    PROMPT: 'prompt'
-};
-
-/**
- * SocketReadyState
- * @see https://www.w3.org/TR/tcp-udp-sockets/#socketreadystate
- **/
-var SocketReadyState = {
-    // The socket is in opening state,
-    // i.e. availability of local address/port is being checked, network status is being checked, etc.
-    OPENING: "opening",
-    // The socket is ready to use to send and received data.
-    OPEN: "open",
-    // The socket is closed and can not be use to send and received data
-    CLOSED: "closed"
 };
 
 
