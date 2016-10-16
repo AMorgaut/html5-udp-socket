@@ -1,0 +1,31 @@
+{
+  "name": "html5-udp-socket",
+  "version": "0.1.0",
+  "description": "UDP Socket API as proposed by the ex W3C Sysapps WG",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AMorgaut/html5-udp-socket.git"
+  },
+  "keywords": [
+    "html5",
+    "upd",
+    "javascript",
+    "socket",
+    "stream",
+    "cordova",
+    "nodejs",
+    "winjs",
+    "chromeos",
+    "firefoxos"
+  ],
+  "author": "Alexandre Morgaut",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AMorgaut/html5-udp-socket/issues"
+  },
+  "homepage": "https://github.com/AMorgaut/html5-udp-socket"
+}
