@@ -4,7 +4,7 @@
   "description": "UDP Socket API as proposed by the ex W3C Sysapps WG",
   "main": "index.js",
   "scripts": {
-    "test": "npm test"
+    "test": "mocha tests/test-*.js"
   },
   "repository": {
     "type": "git",
@@ -27,5 +27,9 @@
   "bugs": {
     "url": "https://github.com/AMorgaut/html5-udp-socket/issues"
   },
-  "homepage": "https://github.com/AMorgaut/html5-udp-socket"
+  "homepage": "https://github.com/AMorgaut/html5-udp-socket",
+  "devDependencies": {
+    "chai": "*",
+    "mocha": "*"
+  }
 }
