@@ -48,8 +48,8 @@ describe("html5 udp vendor template", function() {
         it("should exist", function() {
             expect(vendorTemplate.createUdpSocket).to.be.a.function
         })
-        it("should expect 4 parameters", function() {
-            expect(vendorTemplate.createUdpSocket).to.have.property('length', 4)
+        it("should expect 1 parameter", function() {
+            expect(vendorTemplate.createUdpSocket).to.have.property('length', 1)
         });
         it("should return a valid datagram socket API", function() {
             expect(vendorTemplate.createUdpSocket).to.not.throw(Error)
@@ -87,8 +87,8 @@ describe("html5 udp vendor template", function() {
         it("should exist", function() {
             expect(socket.getLocaleInterface).to.be.a.function
         })
-        it("should expect 2 parameters", function() {
-            expect(socket.getLocaleInterface).to.have.property('length', 2)
+        it("should expect 1 parameter", function() {
+            expect(socket.getLocaleInterface).to.have.property('length', 1)
         });
         it("should throw", function() {
             expect(socket.getLocaleInterface).to.throw(Error)
