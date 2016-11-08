@@ -1,0 +1,7 @@
+language: node_js
+node_js:
+  - '0.10'
+before_install:
+  - currentfolder=${PWD##*/}
+  - if [ "$currentfolder" != 'html5-udp-socket' ]; then cd .. && eval "mv $currentfolder html5-udp-socket" && cd html5-udp-socket; fi
+
