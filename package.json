@@ -30,6 +30,7 @@
   "homepage": "https://github.com/AMorgaut/html5-udp-socket",
   "devDependencies": {
     "chai": "*",
+    "istanbul": "^0.4.5",
     "mocha": "*"
   }
 }

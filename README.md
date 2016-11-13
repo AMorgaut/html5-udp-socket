@@ -1,4 +1,6 @@
 # html5-udp-socket
+[![MIT Licensed](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](#license)
+[![Build Status](https://secure.travis-ci.org/AMorgaut/html5-udp-socket.png?branch=master)](https://travis-ci.org/AMorgaut/html5-udp-socket)
 
 [DRAFT]
 

@@ -476,12 +476,7 @@ function UDPSocket(options) {
     // Create a new UDPSocket object ("mySocket").
 
     mySocket = this;
-    step1 = vendor.createUdpSocket(
-        options.localAddress,
-        options.localPort,
-        options.remoteAddress,
-        options.remotePort
-    );
+    step1 = vendor.createUdpSocket(options);
 
     // step 2
 
@@ -630,9 +625,8 @@ function UDPSocket(options) {
                 // to the selected remoteAddress.
                 return vendorDatagramSocket.getLocaleInterface(
                     // If the routing table states that more than one local interface can be used to send datagrams
-                    // to the selected remoteAddress
-                    // bind the socket to the IPv4/6 address of the "default" local interface to use for the selected
-                    // remoteAddress.
+                    // to the selected remoteAddress bind the socket to the IPv4/6 address of the "default" local 
+                    // interface to use for the selected remoteAddress.
                     // The selection of a "default" local interface is out of scope for this specification.
                     options.remoteAddress
                 ).then(function (localAddress) {
@@ -641,7 +635,7 @@ function UDPSocket(options) {
                 }).catch(function () {
                     // If no local interface can be used to send datagrams to the selected remoteAddress,
                     // throw DOMException InvalidAccessError and abort the remaining steps.
-                    throw InvalidAccessError('Invalid Local Address:' + options.localAddress);
+                    throw InvalidAccessError('Invalid Local Address:' + options.remoteAddress);
                 });
             } else {
                 // Else, i.e. the options argument's localAddress member is absent,

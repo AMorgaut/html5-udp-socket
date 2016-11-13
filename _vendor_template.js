@@ -62,7 +62,7 @@ exports.createUdpSocket = function (options) {
  * @param {Object} options
  */
 function DatagramSocket(options) {
-    throw new Error('createUdpSocket() Not implemented');
+    console.warn('createUdpSocket() Not implemented');
 }
 
 /**
