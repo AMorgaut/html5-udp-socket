@@ -7,43 +7,68 @@ var vendor = require('vendor');
 // HELPERS
 
 /**
+ * Note
+ * The specification says:
+ * > When using promises rejection reasons should always be instances of the ECMAScript Error type such as DOMException 
+ * > or the built in ECMAScript error types.
+ * @see https://www.w3.org/TR/tcp-udp-sockets/#h-sotd
+ *
+ * Browsers do not provide always DOMException as a constructor, so we are using ECMAScript Error with the right 
+ * DOMException properties 
+ **/ 
+
+/**
+ * @private
+ */
+var createException;
+try {
+    createException = new DOMException("foo");
+    // if no thrown error we can use DOMException as a constructor
+    createException = function createException(name, code, message) {
+        var exception;
+	message = typeof message === 'string' ? message : JSON.stringify(message);
+	exception = new DOMException(message);    
+        exception.name = name;
+        exception.code = code;
+        return exception;
+    }
+} catch (e) {
+    // use Error() constructor instead
+    createException = function createException(name, code, message) {
+        var exception;
+	message = typeof message === 'string' ? message : JSON.stringify(message);
+	exception = new Error(message);    
+        exception.name = name;
+        exception.code = code;
+        return exception;
+    }
+}
+/**
  * @private
  */
 function InvalidAccessError(message) {
-    var error = new Error(message);
-    error.name = 'InvalidAccessError';
-    error.code = DOMException && DOMException.INVALID_ACCESS_ERR || 15;
-    return error;
+    return createException('InvalidAccessError', DOMException && DOMException.INVALID_ACCESS_ERR || 15, message);
 }
 
 /**
  * @private
  */
 function SecurityError(message) {
-    var error = new Error(message);
-    error.name = 'SecurityError';
-    error.code = DOMException && DOMException.SECURITY_ERR || 18;
-    return error;
+    return createException('SecurityError', DOMException && DOMException.SECURITY_ERR || 18, message);
 }
 
 /**
  * @private
  */
 function NetworkError(message) {
-    var error = new Error(message);
-    error.name = 'NetworkError';
-    error.code = DOMException && DOMException.NETWORK_ERR || 19;
-    return error;
+    return createException('NetworkError', DOMException && DOMException.NETWORK_ERR || 19, message);
 }
 
 /**
  * @private
  */
 function AbortError(message) {
-    var error = new Error(message);
-    error.name = 'AbortError';
-    error.code = DOMException && DOMException.ABORT_ERR || 20;
-    return error;
+    return createException('AbortError', DOMException && DOMException.ABORT_ERR || 20, message);
 }
 
 /**
