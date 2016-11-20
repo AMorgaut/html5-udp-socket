@@ -1,0 +1,126 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>UDP interface IDL tests</title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/WebIDLParser.js></script>
+<script src=/resources/idlharness.js></script>
+<script src=./index.js></script>
+
+<h1>UDP IDL tests</h1>
+<div id=log></div>
+
+<script type=text/plain class="idl untested">
+interface Navigator {};
+</script>
+<script type=text/plain class="idl">
+partial interface Navigator {
+    readonly    attribute UDPPermission       udpPermission;
+};
+
+interface UDPPermission {
+    Promise<TCPUDPPermissionState> hasPermission (optional UDPPermissionOptions udpPermissionOptions);
+    Promise<void>                  requestPermission (optional UDPPermissionOptions udpPermissionOptions);
+};
+
+[Constructor (optional UDPOptions options)]
+interface UDPSocket {
+    readonly    attribute DOMString?       localAddress;
+    readonly    attribute unsigned short?  localPort;
+    readonly    attribute DOMString?       remoteAddress;
+    readonly    attribute unsigned short?  remotePort;
+    readonly    attribute boolean          addressReuse;
+    readonly    attribute boolean          loopback;
+    readonly    attribute SocketReadyState readyState;
+    readonly    attribute Promise          opened;
+    readonly    attribute Promise          closed;
+    readonly    attribute ReadableStream   readable;
+    readonly    attribute WritableStream  writable;
+    Promise close ();
+    void    joinMulticast (DOMString multicastGroupAddress);
+    void    leaveMulticast (DOMString multicastGroupAddress);
+};
+
+enum TCPUDPPermissionState {
+    "granted",
+    "denied",
+    "prompt"
+};
+
+enum SocketReadyState {
+    "opening",
+    "open",
+    "closing",
+    "closed",
+    "halfclosed"
+};
+
+dictionary UDPMessage {
+             ArrayBuffer    data;
+             DOMString      remoteAddress;
+             unsigned short remotePort;
+};
+
+dictionary UDPOptions {
+             DOMString      localAddress;
+             unsigned short localPort;
+             DOMString      remoteAddress;
+             unsigned short remotePort;
+             boolean        addressReuse;
+             boolean        loopback;
+};
+
+dictionary UDPPermissionOptions {
+             DOMString      localAddress;
+             unsigned short localPort;
+             DOMString      remoteAddress;
+             unsigned short remotePort;
+};
+</script>
+<script type=text/plain class="noidl">
+
+
+</script>
+
+<script>
+/*
+var s = "";
+[].forEach.call(document.getElementsByClassName("idl"), function(idl) {
+  //https://www.w3.org/Bugs/Public/show_bug.cgi?id=14914
+  if (!idl.classList.contains("extract"))
+  {
+    s += idl.textContent + "\n\n";
+  }
+});
+document.body.innerHTML = '<pre></pre>';
+document.body.firstChild.textContent = s;
+*/
+var idl_array = new IdlArray();
+[].forEach.call(document.getElementsByClassName("idl"), function(node) {
+  if (node.className.indexOf("untested") > -1) {
+    idl_array.add_untested_idls(node.textContent);
+  } else {
+    idl_array.add_idls(node.textContent);
+  }
+});
+//idl_array.add_untested_idls("interface Navigator {};");
+//idl_array.add_idls("partial interface Navigator { boolean vibrate ((unsigned long or sequence<unsigned long>) pattern);};");
+idl_array.add_objects({Navigator: ['navigator']});
+idl_array.test();
+
+/*
+"use strict";
+var idlArray = new IdlArray();
+[].forEach.call(document.querySelectorAll("script[type=text\\/plain]"), function(node) {
+  if (node.className == "untested") {
+    idlArray.add_untested_idls(node.textContent);
+  } else {
+    idlArray.add_idls(node.textContent);
+  }
+});
+idlArray.add_objects({
+  PaymentRequest: ["new PaymentRequest([{supportedMethods: ['foo']}], {total: {label: 'bar', amount: {currency: 'BAZ', value: '0'}}})"]
+});
+idlArray.test();
+*/
+</script>

@@ -4,7 +4,7 @@
   "description": "UDP Socket API as proposed by the ex W3C Sysapps WG",
   "main": "index.js",
   "scripts": {
-    "test": "mocha tests/test-*.js"
+    "test": "mocha tests/test-*.js && node ./node_modules/wpt-runner/bin/wpt-runner.js tests/webidl"
   },
   "repository": {
     "type": "git",
@@ -31,6 +31,7 @@
   "devDependencies": {
     "chai": "*",
     "istanbul": "^0.4.5",
-    "mocha": "*"
+    "mocha": "*",
+    "wtp-runner": "domenic/wpt-runner"
   }
 }
