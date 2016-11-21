@@ -1,7 +1,9 @@
 function HTML5_UDP_SOCKET_POLYFILL(self, vendor) {
     'use strict';
 
-    var udpPermission;
+    var
+        createException,
+        udpPermission;
 
     // HELPERS
 
@@ -18,15 +20,19 @@ function HTML5_UDP_SOCKET_POLYFILL(self, vendor) {
 
     /**
      * @private
+     * @method createException
+     * @param {string} name Exception Name, ex: "InvalidAccessError"
+     * @param {number} code Exception Code, ex: 15
+     * @param {string} [message] Exception Message
+     * @returns {DOMException|Error}
      */
-    var createException;
     try {
         createException = new DOMException("foo");
         // if no thrown error we can use DOMException as a constructor
         createException = function createException(name, code, message) {
             var exception;
-    	message = typeof message === 'string' ? message : JSON.stringify(message);
-    	exception = new DOMException(message);
+    	    message = typeof message === 'string' ? message : JSON.stringify(message);
+    	    exception = new DOMException(message);
             exception.name = name;
             exception.code = code;
             return exception;
@@ -35,20 +41,12 @@ function HTML5_UDP_SOCKET_POLYFILL(self, vendor) {
         // use Error() constructor instead
         createException = function createException(name, code, message) {
             var exception;
-    	message = typeof message === 'string' ? message : JSON.stringify(message);
-    	exception = new Error(message);
+    	    message = typeof message === 'string' ? message : JSON.stringify(message);
+    	    exception = new Error(message);
             exception.name = name;
             exception.code = code;
             return exception;
         }
-    }    /**
-     * @private
-     */
-    function InvalidAccessError(message) {
-        var error = new Error(message);
-        error.name = 'InvalidAccessError';
-        error.code = DOMException && DOMException.INVALID_ACCESS_ERR || 15;
-        return error;
     }
 
     /**
@@ -474,7 +472,6 @@ function HTML5_UDP_SOCKET_POLYFILL(self, vendor) {
             };
         }
     });
-
 
 
     /**
