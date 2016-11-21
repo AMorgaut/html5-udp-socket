@@ -77,24 +77,7 @@ dictionary UDPPermissionOptions {
              unsigned short remotePort;
 };
 </script>
-<script type=text/plain class="noidl">
-
-
-</script>
-
 <script>
-/*
-var s = "";
-[].forEach.call(document.getElementsByClassName("idl"), function(idl) {
-  //https://www.w3.org/Bugs/Public/show_bug.cgi?id=14914
-  if (!idl.classList.contains("extract"))
-  {
-    s += idl.textContent + "\n\n";
-  }
-});
-document.body.innerHTML = '<pre></pre>';
-document.body.firstChild.textContent = s;
-*/
 var idl_array = new IdlArray();
 [].forEach.call(document.getElementsByClassName("idl"), function(node) {
   if (node.className.indexOf("untested") > -1) {
@@ -103,24 +86,6 @@ var idl_array = new IdlArray();
     idl_array.add_idls(node.textContent);
   }
 });
-//idl_array.add_untested_idls("interface Navigator {};");
-//idl_array.add_idls("partial interface Navigator { boolean vibrate ((unsigned long or sequence<unsigned long>) pattern);};");
 idl_array.add_objects({Navigator: ['navigator']});
 idl_array.test();
-
-/*
-"use strict";
-var idlArray = new IdlArray();
-[].forEach.call(document.querySelectorAll("script[type=text\\/plain]"), function(node) {
-  if (node.className == "untested") {
-    idlArray.add_untested_idls(node.textContent);
-  } else {
-    idlArray.add_idls(node.textContent);
-  }
-});
-idlArray.add_objects({
-  PaymentRequest: ["new PaymentRequest([{supportedMethods: ['foo']}], {total: {label: 'bar', amount: {currency: 'BAZ', value: '0'}}})"]
-});
-idlArray.test();
-*/
 </script>
