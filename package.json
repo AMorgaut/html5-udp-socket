@@ -32,6 +32,7 @@
     "chai": "*",
     "istanbul": "^0.4.5",
     "mocha": "*",
+    "rewire": "2.5.2",
     "wtp-runner": "domenic/wpt-runner"
   }
 }
