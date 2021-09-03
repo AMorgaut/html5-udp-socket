@@ -13,62 +13,62 @@ var vendor = require('vendor');
  * > or the built in ECMAScript error types.
  * @see https://www.w3.org/TR/tcp-udp-sockets/#h-sotd
  *
- * Browsers do not provide always DOMException as a constructor, so we are using ECMAScript Error with the right 
- * DOMException properties 
+ * Browsers do not provide always DOMException as a constructor, so in these caseswe are using ECMAScript Error with the
+ * right DOMException properties 
  **/ 
 
 /**
  * @private
  */
-var createException;
-try {
-    createException = new DOMException("foo");
-    // if no thrown error we can use DOMException as a constructor
-    createException = function createException(name, code, message) {
+var createException = (function createExceptionGenerator() {
+    var Constructor;
+    try {
+        Constructor = new DOMException("is_supported");
+        // if no thrown error we can use DOMException as a constructor
+        Constructor = DOMException;
+    } catch (e) {
+        Constructor = Error;
+    }
+    return function createException(name, code, message) {
         var exception;
-	message = typeof message === 'string' ? message : JSON.stringify(message);
-	exception = new DOMException(message);    
+        message = typeof message === 'string' ? message : JSON.stringify(message);
+        exception = new Constructor(message);    
         exception.name = name;
         exception.code = code;
         return exception;
-    }
-} catch (e) {
-    // use Error() constructor instead
-    createException = function createException(name, code, message) {
-        var exception;
-	message = typeof message === 'string' ? message : JSON.stringify(message);
-	exception = new Error(message);    
-        exception.name = name;
-        exception.code = code;
-        return exception;
-    }
-}
+    };
+})();
+createException.INVALID_ACCESS_ERR = DOMException && DOMException.INVALID_ACCESS_ERR || 15;
+createException.SECURITY_ERR = DOMException && DOMException.SECURITY_ERR || 18;
+createException.NETWORK_ERR = DOMException && DOMException.NETWORK_ERR || 19;
+createException.ABORT_ERR = DOMException && DOMException.ABORT_ERR || 20;
+
 /**
  * @private
  */
 function InvalidAccessError(message) {
-    return createException('InvalidAccessError', DOMException && DOMException.INVALID_ACCESS_ERR || 15, message);
+    return createException('InvalidAccessError', createException.INVALID_ACCESS_ERR, message);
 }
 
 /**
  * @private
  */
 function SecurityError(message) {
-    return createException('SecurityError', DOMException && DOMException.SECURITY_ERR || 18, message);
+    return createException('SecurityError', createException.SECURITY_ERR, message);
 }
 
 /**
  * @private
  */
 function NetworkError(message) {
-    return createException('NetworkError', DOMException && DOMException.NETWORK_ERR || 19, message);
+    return createException('NetworkError', createException.NETWORK_ERR, message);
 }
 
 /**
  * @private
  */
 function AbortError(message) {
-    return createException('AbortError', DOMException && DOMException.ABORT_ERR || 20, message);
+    return createException('AbortError', createException.ABORT_ERR, message);
 }
 
 /**
